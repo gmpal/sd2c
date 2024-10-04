@@ -1,0 +1,75 @@
+[tool.poetry]
+name = "td2c"
+version = "0.1.0"
+description = "**TD2C (Time-Dependency to Causality)** is a library for time series causal discovery. It focuses on computing asymmetric conditional mutual information terms, known as descriptors, within the Markov blankets of variable pairs."
+authors = ["Gian Marco Paldino <gpaldino@ulb.ac.be>"]
+license = "LICENSE"
+readme = "README.md"
+packages = [{ include = "d2c", from = "src" }]
+include = ["*.py", "src/**/*.json", "src/**/*.toml"]
+exclude = ["tests/*"]
+
+[build-system]
+requires = ["poetry-core>=1.0.0", "cython"]
+build-backend = "poetry.core.masonry.api"
+
+# Specify Python version(s) and real dependencies in this section
+[tool.poetry.dependencies]
+python = ">=3.10,<3.11"
+jupyter = "*"
+jupyterlab_server = "*"
+jupyterlab = "*"
+pyrootutils = "*"
+loguru = "*"
+numpy = "*"
+pandas = "*"
+scipy = "*"
+scikit-learn = "*"
+imblearn = "*"
+cachetools = "*"
+seaborn = "*"
+dcor = "*"
+matplotlib = "*"
+#competitors
+statsmodels = "*"
+tigramite = "*"
+lingam = "*"
+causalnex = "*"
+causalgraphicalmodels = "*"
+causal-playground = "*"
+itertools = "*"
+
+# keras = "*"
+# torch = [
+#     { version = "^2.0.0", source = "pytorch", platform = "linux" },
+#     { version = "^2.0.0", source = "pypi", platform = "darwin" },
+# ]
+
+# lightning = "*"
+# torchvision = "*"
+ipykernel = "^6.29.5"
+
+# [[tool.poetry.source]]
+# name = "pytorch"
+# url = "https://download.pytorch.org/whl/cu121"
+# priority = "explicit"                          # means this URL will be checked for only for the packages where it is explicitly specified
+
+
+# Here, specify development dependencies, which won't be part of the actual final dependency list
+# but that you need, well, to develop your project
+[tool.poetry.dev-dependencies]
+black = { extras = ["jupyter"], version = "*" }
+flake8 = "*"
+ipython = "*"
+isort = "*"
+mypy = "*"
+pylint = "*"
+pytest = "*"
+pytest-cov = "*"
+pytest-mock = "*"
+pytest-pylint = "*"
+pytest-mypy = "*"
+pytest-testmon = "*"
+pytest-xdist = "*"
+nbmake = "*"
+hydra-core = "*"
