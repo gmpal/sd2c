@@ -1,0 +1,29 @@
+jupyter
+numpy
+pandas
+scipy
+scikit-learn
+imblearn
+cachetools
+seaborn
+dcor
+matplotlib
+causal-playground
+ipykernel
+
+# Dev dependencies (commented out, uncomment as needed)
+# black[jupyter]
+# flake8
+# ipython
+# isort
+# mypy
+# pylint
+# pytest
+# pytest-cov
+# pytest-mock
+# pytest-pylint
+# pytest-mypy
+# pytest-testmon
+# pytest-xdist
+# nbmake
+# hydra-core

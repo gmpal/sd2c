@@ -79,3 +79,15 @@ Check the notebooks in the [notebooks folder](./notebooks) for detailed examples
 - [00_data_generation.ipynb](./notebooks/00_data_generation.ipynb): Demonstrates how to generate synthetic data for testing the TD2C library.
 - [01_descriptors_computation.ipynb](./notebooks/01_descriptors_computation.ipynb): Shows how to compute the descriptors using the TD2C library.
 - [02_performances.ipynb](./notebooks/02_performances.ipynb): Provides results of cross validation performances.
+
+
+## Logs
+TODOs:
+- add noise
+- add kwargs for specific functions 
+- add competitors 
+- show DAG reconstruction 
+- try DNN approaches
+
+2024.10.04
+First verion published, preliminary results on cross validation only
