@@ -13,6 +13,27 @@ import statsmodels.api as sm
 from datetime import datetime
 
 
+def update_dictionary_quantiles(dictionary, values_qt):
+    """
+    Update the given dictionary with quantiles.
+
+    Args:
+        dictionary (dict): The dictionary to update.
+        name (str): The name of the quantiles.
+        quantiles (list): A list of quantiles to add to the dictionary.
+
+    Returns:
+        None
+    """
+    pq = [0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95]
+    for name, vector in values_qt.items():
+        print(name, vector)
+        # Add quantiles to the dictionary
+        quantiles = np.quantile(vector, pq)
+        for i, q in enumerate(quantiles):
+            dictionary[f"{name}_q{i}"] = q
+
+
 ############################################################################################################
 #######   COMMENTED OUT FOR NOW because it is compacted in the above function  ############################
 #               ############################################################################################################
@@ -38,9 +59,11 @@ def ridge_regression(X_train, Y_train, X_test=None, lambda_val=1e-3):
     Y_train_hat = model.predict(X_train)
     e_train = Y_train - Y_train_hat
     MSE_emp = mean_squared_error(Y_train, Y_train_hat)
-    NMSE = MSE_emp / (np.var(Y_train)**2)
+    NMSE = MSE_emp / (np.var(Y_train) ** 2)
 
-    e_loo = cross_val_score(model, X_train, Y_train, scoring='neg_mean_squared_error', cv=2)
+    e_loo = cross_val_score(
+        model, X_train, Y_train, scoring="neg_mean_squared_error", cv=2
+    )
     MSE_loo = -np.mean(e_loo)
 
     Y_test_hat = None
@@ -48,24 +71,22 @@ def ridge_regression(X_train, Y_train, X_test=None, lambda_val=1e-3):
         Y_test_hat = model.predict(X_test)
 
     return {
-        'e_train': e_train,
-        'beta_hat': [model.intercept_, model.coef_[0]],
-        'MSE_emp': MSE_emp,
-        'NMSE': NMSE,
-        'MSE_loo': MSE_loo,
-        'Y_train_hat': Y_train_hat,
-        'Y_test_hat': Y_test_hat,
-        'model': model,
+        "e_train": e_train,
+        "beta_hat": [model.intercept_, model.coef_[0]],
+        "MSE_emp": MSE_emp,
+        "NMSE": NMSE,
+        "MSE_loo": MSE_loo,
+        "Y_train_hat": Y_train_hat,
+        "Y_test_hat": Y_test_hat,
+        "model": model,
     }
-
-
 
 
 # def ridge_regression(X_train, Y_train, X_test=None, lambda_val=1e-3, verbose=True):
 #     """
-#         This function performs ridge regression, a variant of linear regression that 
-#         includes a regularization term. This method is used to prevent overfitting and to 
-#         handle multicollinearity (high correlation among predictors) in data. The regularization 
+#         This function performs ridge regression, a variant of linear regression that
+#         includes a regularization term. This method is used to prevent overfitting and to
+#         handle multicollinearity (high correlation among predictors) in data. The regularization
 #         term is controlled by a parameter lambda, which shrinks the coefficients towards zero.
 
 #         The function is based on the R code from the original D2C package.
@@ -139,9 +160,11 @@ def ridge_regression(X_train, Y_train, X_test=None, lambda_val=1e-3):
 #         'NMSE': NMSE
 #     }
 
-def column_based_correlation(X,Y,verbose=True):
-    #TODO: multidimensional Y 
-    if verbose: print(datetime.now().strftime('%H:%M:%S'),'column_based_correlation')
+
+def column_based_correlation(X, Y, verbose=True):
+    # TODO: multidimensional Y
+    if verbose:
+        print(datetime.now().strftime("%H:%M:%S"), "column_based_correlation")
     columns_of_X = X.shape[1]  # Number of columns in X
 
     correlation_vector = np.zeros(columns_of_X)  # Initialize correlation vector
@@ -154,25 +177,29 @@ def column_based_correlation(X,Y,verbose=True):
     correlation_array = correlation_vector.reshape(1, -1)
 
     # Print the correlation vector
-    return(correlation_array[0])
+    return correlation_array[0]
 
-def co2i(X,Y, verbose=True):
+
+def co2i(X, Y, verbose=True):
 
     # check if Y is a pd.series and make it dataframe
     if isinstance(Y, pd.Series):
         Y = pd.DataFrame(Y)
 
-    if verbose: print(datetime.now().strftime('%H:%M:%S'),'co2i')
+    if verbose:
+        print(datetime.now().strftime("%H:%M:%S"), "co2i")
 
-    correlation_vector = column_based_correlation(X,Y, verbose=verbose)
+    correlation_vector = column_based_correlation(X, Y, verbose=verbose)
     corr_sq = np.square(correlation_vector)
 
     epsilon = 1e-10  # a small positive value to prevent log(0)
     clamped_values = np.clip(1 - corr_sq, epsilon, None)
     I = -0.5 * np.log(clamped_values)
-    if verbose: print(datetime.now().strftime('%H:%M:%S'),'I: ', I)
+    if verbose:
+        print(datetime.now().strftime("%H:%M:%S"), "I: ", I)
 
     return I
+
 
 def rankrho(X, Y, nmax=5, regr=False, verbose=False):
     """
@@ -217,14 +244,14 @@ def rankrho(X, Y, nmax=5, regr=False, verbose=False):
     """
     # Number of columns in X and Y
     n = X.shape[1]
-    
+
     Iy = np.zeros(n)
 
     if not regr:
         Iy = co2i(X, Y, verbose=verbose)
     else:
         for i in range(n):
-            Iy[i] = abs(ridge_regression(X.iloc[:, i], Y)['beta_hat'][1])
+            Iy[i] = abs(ridge_regression(X.iloc[:, i], Y)["beta_hat"][1])
 
     argsort = np.argsort(Iy)
     reverse = argsort[::-1]
@@ -235,9 +262,9 @@ def rankrho(X, Y, nmax=5, regr=False, verbose=False):
 def mRMR(X, Y, nmax, verbose=False):
     """
     Max-Relevance Min-Redundancy (mRMR) feature selection method.
-    
-    This function selects features based on maximizing mutual information (MI) with 
-    the target variable Y and minimizing the average mutual information among the 
+
+    This function selects features based on maximizing mutual information (MI) with
+    the target variable Y and minimizing the average mutual information among the
     selected features.
 
     Parameters:
@@ -250,48 +277,57 @@ def mRMR(X, Y, nmax, verbose=False):
     - list[int]: List of indices for the selected features.
     """
 
-    if verbose: print(datetime.now().strftime('%H:%M:%S'),'mRMR')
+    if verbose:
+        print(datetime.now().strftime("%H:%M:%S"), "mRMR")
     num_features = X.shape[1]
-    
+
     # Calculate mutual information between each feature in X and Y
     mi_XY = mutual_info_regression(X, Y)
-    if verbose: print(datetime.now().strftime('%H:%M:%S'),"mi_XY: ", mi_XY)
+    if verbose:
+        print(datetime.now().strftime("%H:%M:%S"), "mi_XY: ", mi_XY)
 
     # Start with the feature with maximum MI with Y
     indices = [np.argmax(mi_XY)]
-    
+
     for _ in range(nmax - 1):
         remaining_indices = list(set(range(num_features)) - set(indices))
-        if verbose: print(datetime.now().strftime('%H:%M:%S'),"remaining_indices: ", remaining_indices)
+        if verbose:
+            print(
+                datetime.now().strftime("%H:%M:%S"),
+                "remaining_indices: ",
+                remaining_indices,
+            )
         mi_XX = np.zeros(len(remaining_indices))
-        
+
         # Calculate mutual information between selected features and remaining features
         for i in range(len(remaining_indices)):
-            mi_XX[i] = mutual_info_regression(X.iloc[:, indices], X.iloc[:, remaining_indices[i]])[0]
-        
+            mi_XX[i] = mutual_info_regression(
+                X.iloc[:, indices], X.iloc[:, remaining_indices[i]]
+            )[0]
+
         # Calculate MRMR score for each remaining feature
         mrmr_scores = mi_XY[remaining_indices] - np.mean(mi_XX)
-        if verbose: print(datetime.now().strftime('%H:%M:%S'),"mrmr_scores: ", mrmr_scores)
+        if verbose:
+            print(datetime.now().strftime("%H:%M:%S"), "mrmr_scores: ", mrmr_scores)
         # Select feature with maximum MRMR score
         indices.append(remaining_indices[np.argmax(mrmr_scores)])
-    
+
     return indices
 
 
-
-
 def ecdf(data, verbose=False):
-    if verbose: print(datetime.now().strftime('%H:%M:%S'),'ecdf')
+    if verbose:
+        print(datetime.now().strftime("%H:%M:%S"), "ecdf")
+
     def _ecdf(x):
         return percentileofscore(data, x) / 100
+
     return _ecdf
 
 
-
-
-
 def coeff(y, x1, x2=None, verbose=False):
-    if verbose: print(datetime.now().strftime('%H:%M:%S'),'coeff')
+    if verbose:
+        print(datetime.now().strftime("%H:%M:%S"), "coeff")
     if x2 is not None:
         X = np.column_stack((x1, x2))
     else:
@@ -304,72 +340,77 @@ def coeff(y, x1, x2=None, verbose=False):
     return model.coef_[0]  # return the coefficient of x1
 
 
-
 # High Order Correlation
 def HOC(x, y, i, j):
-    return np.mean((x - np.mean(x))**i * (y - np.mean(y))**j) / (np.std(x)**i * np.std(y)**j)
+    return np.mean((x - np.mean(x)) ** i * (y - np.mean(y)) ** j) / (
+        np.std(x) ** i * np.std(y) ** j
+    )
+
 
 def stab(X, Y, lin=True, R=10):
     X = (X - np.min(X)) / (np.max(X) - np.min(X) + 1e-4)
     Y = (Y - np.min(Y)) / (np.max(Y) - np.min(Y) + 1e-4)
-    
+
     Xhat = []
     Yhat = []
-    
+
     for r in range(R):
         m1 = np.random.rand()
         m2 = np.random.rand()
-        prob = np.exp(-((X - m1)**2) / (2 * 0.25**2)) + np.exp(-((X - m2)**2) / (2 * 0.25**2))
+        prob = np.exp(-((X - m1) ** 2) / (2 * 0.25**2)) + np.exp(
+            -((X - m2) ** 2) / (2 * 0.25**2)
+        )
         prob /= np.sum(prob)
-        indices = np.random.choice(np.arange(len(X)), 100, p=prob) # Get indices
+        indices = np.random.choice(np.arange(len(X)), 100, p=prob)  # Get indices
         rX = X[indices]
-        rY = Y[indices] # Directly use the indices to get rY values
-        
+        rY = Y[indices]  # Directly use the indices to get rY values
+
         model_Y = sm.OLS(rY, sm.add_constant(rX)).fit()
         model_X = sm.OLS(rX, sm.add_constant(rY)).fit()
-        
+
         Xts = np.linspace(0, 1, 100)
         Yts = np.linspace(0, 1, 100)
         pY = model_Y.predict(sm.add_constant(Xts))
         pX = model_X.predict(sm.add_constant(Yts))
         Yhat.append(pY)
         Xhat.append(pX)
-    
-    return np.sign(np.mean(np.std(Yhat, axis=0)) - np.mean(np.std(Xhat, axis=0)))
 
+    return np.sign(np.mean(np.std(Yhat, axis=0)) - np.mean(np.std(Xhat, axis=0)))
 
 
 def print_dag(dag, part="all"):
     if part == "all":
-        print("#"*20)
+        print("#" * 20)
         for node, attr in dag.nodes(data=True):
             print(f"Node {node} has attributes {attr}")
         for edge_source, edge_dest, attrs in dag.edges(data=True):
             print(f"Edge {edge_source} -> {edge_dest} has attributes {attrs}")
     elif part == "nodes":
-        print("#"*20)
+        print("#" * 20)
         for node in dag.nodes():
             print(f"Node {node}")
     elif part == "edges":
-        print("#"*20)
+        print("#" * 20)
         for edge_source, edge_dest in dag.edges():
             print(f"Edge {edge_source} -> {edge_dest}")
 
 
 def dag_to_formula(dag):
     import networkx as nx
+
     formula = ""
     for node in nx.topological_sort(dag):
         if f"_t-" not in str(node):
             formula += f"{node} = "
-            bias = dag.nodes[node]['bias']
+            bias = dag.nodes[node]["bias"]
             parents = list(dag.predecessors(node))
             for parent in parents:
                 edge = dag.edges[parent, node]
-                weight = edge['weight']
+                weight = edge["weight"]
                 formula += f"{weight}*{parent} + "
             formula += f"{bias}\n"
     print(formula)
+
 
 def custom_layout(G, n_nodes, t_lag):
     """
@@ -381,8 +422,8 @@ def custom_layout(G, n_nodes, t_lag):
     height = 1.0 / (t_lag - 1)
 
     for node in G.nodes():
-        if '_t-' in node:
-            i, t = map(int, node.split('_t-'))
+        if "_t-" in node:
+            i, t = map(int, node.split("_t-"))
         else:
             i, t = int(node), 0
         pos[node] = (i * width, t * height)
@@ -395,10 +436,19 @@ def custom_layout(G, n_nodes, t_lag):
 def show_DAG(G):
     import networkx as nx
     import matplotlib.pyplot as plt
+
     # Using the custom layout for plotting
     plt.figure(figsize=(10, 6))
     pos_custom = custom_layout(G, 3, 3)
-    nx.draw(G, pos_custom, with_labels=True, node_size=1000, node_color="lightpink", font_size=10, arrowsize=10)
+    nx.draw(
+        G,
+        pos_custom,
+        with_labels=True,
+        node_size=1000,
+        node_color="lightpink",
+        font_size=10,
+        arrowsize=10,
+    )
     plt.title("Time Series DAG with Custom Layout")
     plt.show()
 
@@ -406,35 +456,36 @@ def show_DAG(G):
 def epred(X, Y):
     """
     Returns the predicted values for Y using linear regression.
-    
+
     Parameters:
     - X: A 2D numpy array or matrix representing predictor variables.
     - Y: A 1D numpy array representing the response variable.
-    
+
     Returns:
     Predicted values for Y.
     """
     # Get the number of rows and columns of the matrix X
     N, n = X.shape
-    
+
     # Check for columns with almost constant values
     sds = np.std(X, axis=0)
     non_const_cols = sds > 0.01
     X = X.loc[:, non_const_cols]
-    
+
     # Scale the predictors
     scaler = StandardScaler()
     XX = scaler.fit_transform(X)
-    
+
     # Check for insufficient rows or NaN values
     if N < 5 or np.isnan(XX).any():
         raise ValueError("Error in epred")
-    
+
     # Linear regression prediction
     reg = LinearRegression().fit(XX, Y)
     Y_hat = reg.predict(XX)
-    
+
     return Y_hat
 
+
 def make_name(node_idx):
-    return 'v' + str(node_idx)
+    return "v" + str(node_idx)

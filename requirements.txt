@@ -10,6 +10,9 @@ dcor
 matplotlib
 causal-playground
 ipykernel
+statsmodels
+tensorflow
+keras
 
 # Dev dependencies (commented out, uncomment as needed)
 # black[jupyter]

@@ -1,93 +1,168 @@
-# D2C (Dependency to Causality)
-**D2C (Dependency to Causality)** is a library for causal discovery. It focuses on computing asymmetric conditional mutual information terms, known as descriptors, within the estimated Markov blankets of variable pairs.
+# Structural Causal Discovery Toolkit (SD2C)
 
-N.B. This procedure was tested in Linux. If you have Windows, you can use WSL.
+[![Python 3.10](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/downloads/release/python-3100/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Clone 
-Make sure you only get the latest commit 
+## Overview
+
+SD2C (Static Dependency to Causality) is a toolkit for conducting experiments in causal discovery, offering a comprehensive framework for generating synthetic datasets with known causal structures and applying various causal discovery algorithms to recover these structures.
+
+This repository provides tools for:
+- Generating synthetic datasets with known causal relationships
+- Extracting various matrix representations (adjacency, correlation, partial correlation)
+- Converting between different data representations
+- Training deep learning models to infer causal relationships
+
+## Repository Structure
+
 ```
-git clone --depth 1 https://github.com/gmpal/d2c
+├── src/
+│   ├── generation/       # Synthetic data generation utilities
+│   │   ├── builder.py    # Main class for dataset generation
+│   │   └── functions.py  # Causal relationship functions
+│   ├── models/           # Time series causal models
+│   └── utils/            # Utility functions for data handling
+├── par2ad.py             # Partial correlation to adjacency matrix conversion
+├── data_generation.ipynb # Notebook demonstrating data generation
+└── pipeline.ipynb        # End-to-end causal discovery pipeline
 ```
 
-If you already have a working environment, go to step [2](#step2)
+## Key Components
 
-## Python, poetry
-To get started with TD2C, follow these steps:
+### Builder Class
 
-1. Install everything you need for pyenv
-    ```
-    sudo apt update
-    sudo apt install -y build-essential libssl-dev libffi-dev python3-dev zlib1g-dev libbz2-dev libsqlite3-dev libreadline-dev libgdbm-dev liblzma-dev tk-dev
-    ```
+The `Builder` class in `src/generation/builder.py` is the core data generation component, allowing users to create synthetic datasets with known causal structures. It supports:
 
-2. Install `pyenv` (recommended, tested):
-        ```
-        curl https://pyenv.run | bash
-        ```
+- Multiple functional relationships (linear, polynomial, sigmoid, nonlinear, interaction)
+- Customizable dataset sizes and variable counts
+- Exogenous and endogenous variables
+- Extraction of various matrix representations
 
-2. Load pyenv automatically by appending the following to ~/.bash_profile if it exists, otherwise ~/.profile (for login shells) and  ~/.bashrc (for interactive shells)
-     
-    ```
-    export PYENV_ROOT="$HOME/.pyenv"
-    [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
-    eval "$(pyenv init -)"
-        ```
-3. Restart the shell. Then 
+### Causal Function Types
 
-    ```
-    pyenv install 3.10
-    pyenv virtualenv 3.10 td2c
-    pyenv shell td2c
-    ```
+SD2C supports several types of causal relationships:
 
-4. Install Poetry for dependencies management:
-    ```
-    pip install --upgrade pip
-    pip install poetry
-    ```
+1. **Linear**: Standard linear relationships between variables
+2. **Polynomial**: Nonlinear polynomial relationships with customizable degrees
+3. **Sigmoid**: Sigmoidal nonlinear relationships
+4. **Nonlinear**: Custom nonlinear functions (sin, tanh, etc.)
+5. **Interaction**: Multiplicative interactions between variables
 
-5. Install dependencies from `poetry.lock` file:
-    ```
-    poetry env use $(pyenv which python)
-    poetry install
-    ```
+### ParcorrToAdjacencyModel Class
 
-6. If the above fails, you can resolve dependencies and try again. This will take a few minutes. 
-    ```
-    poetry lock
-    poetry install
-    ```
+The `ParcorrToAdjacencyModel` in `par2ad.py` is a neural network framework for learning mappings from partial correlation matrices to adjacency matrices, enabling data-driven causal discovery.
 
-## Environment already setup <a name="step2"></a>
-    ```
-    pip install poetry
-    poetry install
-    ```
+## Getting Started
 
-If you already have an environment, you can simply run from the project directory
-5. Setup completed. Now you can run a jupyter notebook and access the notebooks provided. 
-    
-    ```
-    poetry shell
-    jupyter notebook
-    ```
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/sd2c.git
+cd sd2c
+
+# Create and activate a virtual environment
+python -m venv env
+source env/bin/activate  # On Windows, use: env\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### Basic Usage
+
+#### Generating Synthetic Data
+
+```python
+from src.generation.builder import Builder
+import math
+
+# Initialize a Builder instance
+builder = Builder(
+    observations=250,             # Number of observations per dataset
+    n_variables_exo=4,            # Number of exogenous variables
+    n_variables_endo=6,           # Number of endogenous variables
+    functions_to_use=[
+        "linear",
+        "polynomial",
+        "sigmoid",
+        "nonlinear",
+        "interaction",
+    ],
+    functions_kwargs={
+        "polynomial": [[1, 2], [2, 3]],
+        'nonlinear': [math.sin, math.tanh],
+    },
+    datasets_per_function=10,     # Number of datasets per function type
+    noise_std=0.2,                # Standard deviation of noise
+    seed=123                      # Random seed for reproducibility
+)
+
+# Generate datasets
+builder.build()
+
+# Retrieve matrices
+adjacency_matrix = builder.get_adjacency_matrix('linear', 0)
+correlation_matrix = builder.get_correlation_matrix('linear', 0)
+parcorr_matrix = builder.get_parcorr_matrix('linear', 0)
+```
+
+#### Training a Causal Discovery Model
+
+```python
+from par2ad import ParcorrToAdjacencyModel, generate_training_data
+
+# Generate training data
+parcorr_matrices, adjacency_matrices = generate_training_data(builder, n_samples=200)
+
+# Create and train the model
+model = ParcorrToAdjacencyModel(input_shape=(10, 10, 1), output_shape=(10, 10))
+
+# Prepare the data
+X_train, X_val, y_train, y_val = model.prepare_data(parcorr_matrices, adjacency_matrices)
+
+# Train the model
+history = model.train(X_train, y_train, X_val, y_val, epochs=50, batch_size=16)
+
+# Test on new data
+test_parcorr = builder.get_parcorr_matrix("linear", 0)
+test_adjacency = builder.get_adjacency_matrix("linear", 0)
+model.plot_comparison(test_parcorr.values, test_adjacency.values)
+```
+
+## Example Notebooks
+
+The repository includes Jupyter notebooks that demonstrate the use of the toolkit:
+
+1. **data_generation.ipynb**: Demonstrates how to generate synthetic data with different causal structures
+2. **pipeline.ipynb**: Shows an end-to-end pipeline from data generation to causal discovery
+
+## Time Series Models
+
+The repository also includes several time series causal models in `src/models.py`:
+
+1. Model 1: `-0.4 * (3 - (Y_bar_t[N_j])**2) / (1 + (Y_bar_t[N_j])**2) + 0.6 * (3 - (Y_bar_t-1[N_j] - 0.5)**3) / (1 + (Y_bar_t-1[N_j] - 0.5)**4) + W_t+1[j]`
+2. Model 2: `(0.4 - 2 * exp(-50 * Y_bar_t-1[N_j]**2)) * Y_bar_t-1[N_j] + (0.5 - 0.5 * exp(-50 * Y_bar_t-2[N_j]**2)) * Y_bar_t-2[N_j] + W_t+1[j]`
+3. Model 3: `1.5 * sin(pi / 2 * Y_bar_t-1[N_j]) - sin(pi / 2 * Y_bar_t-2[N_j]) + W_t+1[j]`
+
+And many more, each representing different causal relationships in time series data.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 
-## Usage
-Check the notebooks in the [notebooks folder](./notebooks) for detailed examples and explanations:
+## Acknowledgments
 
-- [00_data_generation.ipynb](./notebooks/00_data_generation.ipynb): Demonstrates how to generate synthetic data for testing the TD2C library.
-- [01_descriptors_computation.ipynb](./notebooks/01_descriptors_computation.ipynb): Shows how to compute the descriptors using the TD2C library.
-- [02_performances.ipynb](./notebooks/02_performances.ipynb): Provides results of cross validation performances.
-
-
-## Logs
-TODOs:
-- add noise
-- add kwargs for specific functions 
-- add competitors 
-- show DAG reconstruction 
-- try DNN approaches
-
-2024.10.04
-First verion published, preliminary results on cross validation only
+- Inspired by advances in causal discovery research
+- Based on structural causal models and time series analysis techniques
