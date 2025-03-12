@@ -64,7 +64,7 @@ class D2C:
 
         # merge lists into a single list
         results = [item for sublist in results for item in sublist]
-        self.descriptors_df = results
+        self.descriptors_df = pd.DataFrame(results)
 
     def compute_descriptors(self, dag_idx, dag):
         """
@@ -190,3 +190,78 @@ class D2C:
             collected_values.append(values)
 
         return collected_values
+
+    def get_matrices(self):
+        """
+        TODO: write tests
+        Constructs adjacency matrices for each descriptor column in the dataframe.
+
+        Parameters:
+        -----------
+        df : pandas.DataFrame
+            DataFrame containing edge_source, edge_dest, and descriptor columns
+
+        Returns:
+        --------
+        dict
+            Dictionary where keys are descriptor names and values are the corresponding adjacency matrices
+        """
+        # Get unique graphs
+
+        graph_ids = self.descriptors_df["graph_id"].unique()
+
+        matrices_per_graph = {}
+        for graph_id in graph_ids:
+            df = self.descriptors_df[self.descriptors_df["graph_id"] == graph_id]
+
+            # Get unique nodes from source and destination columns
+            nodes = sorted(
+                set(df["edge_source"].unique()) | set(df["edge_dest"].unique())
+            )
+
+            # Create a mapping Series for faster lookup
+            node_map = pd.Series(range(len(nodes)), index=nodes)
+
+            # Map node names to indices using vectorized operations
+            source_indices = node_map[df["edge_source"]].values
+            dest_indices = node_map[df["edge_dest"]].values
+
+            # Identify descriptor columns (all columns except graph_id, edge_source, edge_dest)
+            descriptor_cols = [
+                col
+                for col in df.columns
+                if col not in ["is_causal", "graph_id", "edge_source", "edge_dest"]
+            ]
+
+            # Create empty dictionary to store matrices
+            matrices = {}
+
+            # For each descriptor, create an adjacency matrix
+            for descriptor in descriptor_cols:
+                # Initialize empty matrix with NaN values
+                matrix = np.full((len(nodes), len(nodes)), np.nan)
+
+                # Fill in matrix values directly using vectorized operations
+                matrix[source_indices, dest_indices] = df[descriptor].values
+
+                # replace nans with 0 TODO: CHECK WHY NANS OUTSIDE OF THE DIAGONAL
+                matrix = np.nan_to_num(matrix)
+
+                # Convert to pandas DataFrame with proper labels
+                matrices[descriptor] = pd.DataFrame(matrix, index=nodes, columns=nodes)
+
+            matrices_per_graph[graph_id] = matrices
+
+        return matrices_per_graph
+
+    def save(self):
+        """
+        Save the descriptors dataframe to a pickle file.
+        """
+        self.descriptors_df.to_pickle("descriptors.pkl")
+
+    def load(self):
+        """
+        Load the descriptors dataframe from a pickle file.
+        """
+        self.descriptors_df = pd.read_pickle("descriptors.pkl")
